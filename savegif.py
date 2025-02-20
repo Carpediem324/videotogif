@@ -4,16 +4,17 @@ import sys
 import os
 
 # 전역변수 설정 (필요에 따라 아래 값을 수정하세요)
-SAVEGIF = True                              # True이면 gif로 저장, False이면 mp4로 저장
+# 저장 포맷 선택: 'gif' 또는 'webp'
+SAVE_FORMAT = "webp"  # 'gif' 또는 'webp'로 변경 가능
 
 # 현재 파이썬 파일의 위치를 기준으로 동영상 파일과 저장 위치를 지정합니다.
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SAVE_PATH = os.path.join(SCRIPT_DIR, 'fastvideo')
 
 ### 수정할곳
-VIDEO_PATH = os.path.join(SCRIPT_DIR, 'eight.mp4')
-OUTPUT_FILENAME = 'eight'             # 저장할 파일명 (확장자 제외)
-SPEED_FACTOR = 10.0                          # 몇 배속 (예: 2.0이면 2배속)
+VIDEO_PATH = os.path.join(SCRIPT_DIR, 'dsss.mp4')
+OUTPUT_FILENAME = 'dsss'             # 저장할 파일명 (확장자 제외)
+SPEED_FACTOR = 5.0                       # 몇 배속 (예: 2.0이면 2배속)
 
 # setuptools(및 pkg_resources) 임포트 (설치되어 있지 않으면 설치)
 try:
@@ -81,16 +82,44 @@ try:
 except ImportError:
     raise ImportError("moviepy 모듈을 불러올 수 없습니다. 패키지 설치를 확인하세요.")
 
+def write_webp(clip, output_file):
+    """
+    VideoClip 객체를 받아서 animated webp 파일로 저장합니다.
+    Pillow의 Image.save()를 사용하여 save_all 옵션으로 저장합니다.
+    """
+    from PIL import Image
+    frames = []
+    # 모든 프레임을 리스트에 저장합니다.
+    for frame in clip.iter_frames():
+        im = Image.fromarray(frame)
+        frames.append(im)
+    
+    # fps를 정수로 변환하고, 프레임 간 간격(duration)을 밀리초 단위로 계산합니다.
+    fps = int(round(clip.fps))
+    duration = int(round(1000 / fps))
+    
+    # 첫 번째 프레임에 나머지 프레임을 추가하여 animated webp 파일로 저장합니다.
+    frames[0].save(
+        output_file,
+        save_all=True,
+        append_images=frames[1:],
+        duration=duration,
+        loop=0,
+        format='WEBP'
+    )
+
 def change_video_speed():
     # 저장 경로가 없으면 생성합니다.
     if not os.path.exists(SAVE_PATH):
         os.makedirs(SAVE_PATH)
     
-    # SAVEGIF 값에 따라 확장자를 붙입니다.
-    if SAVEGIF:
+    # SAVE_FORMAT 값에 따라 확장자를 붙입니다.
+    if SAVE_FORMAT.lower() == "gif":
         output_file = os.path.join(SAVE_PATH, OUTPUT_FILENAME + '.gif')
+    elif SAVE_FORMAT.lower() == "webp":
+        output_file = os.path.join(SAVE_PATH, OUTPUT_FILENAME + '.webp')
     else:
-        output_file = os.path.join(SAVE_PATH, OUTPUT_FILENAME + '.mp4')
+        raise ValueError("SAVE_FORMAT 설정이 잘못되었습니다. 'gif' 또는 'webp'로 설정해주세요.")
     
     print(f"원본 파일: {VIDEO_PATH}")
     print(f"저장 파일: {output_file}")
@@ -102,11 +131,11 @@ def change_video_speed():
     # 속도 변경 (moviepy의 vfx.speedx 함수 사용)
     sped_up_clip = clip.fx(vfx.speedx, factor=SPEED_FACTOR)
     
-    # SAVEGIF 값에 따라 gif 또는 mp4로 저장
-    if SAVEGIF:
+    # SAVE_FORMAT 값에 따라 gif 또는 webp로 저장
+    if SAVE_FORMAT.lower() == "gif":
         sped_up_clip.write_gif(output_file)
-    else:
-        sped_up_clip.write_videofile(output_file, codec='libx264')
+    elif SAVE_FORMAT.lower() == "webp":
+        write_webp(sped_up_clip, output_file)
     
     # 클립 리소스 해제
     clip.close()
